@@ -11,8 +11,12 @@ namespace CeVIOActivator
 {
     public static class AssemblyPatcher
     {
-        private const string TARGET_FILE = "CeVIO.ToolBarControl.dll";
-        private const string TARGET_CLASS = "CeVIO.Editor.MissionAssistant.Authorizer";
+        // System.Void CeVIO.ToolBarControl.ToolBarControl::.cctor()
+        private const string TARGET_PATCH_FILE = "CeVIO.ToolBarControl.dll";
+        private const string TARGET_PATCH_CLASS = "CeVIO.ToolBarControl.ToolBarControl";
+        private const string TARGET_PATCH_METHOD = ".cctor";
+
+        private const string AUTHORIZER_NAME = "CeVIO.Editor.MissionAssistant.Authorizer";
 
         [Obsolete("Directly patch executable will make it not work. Use PatchFile instead.")]
         public static void PatchExecutable(string cevioExecutablePath)
@@ -36,22 +40,19 @@ namespace CeVIOActivator
 
         public static bool PatchFile(string cevioInstallPath)
         {
-            // System.Void CeVIO.ToolBarControl.ToolBarControl::.cctor()
-            // System.Reflection.Assembly.GetEntryAssembly().GetType("CeVIO.Editor.MissionAssistant.Authorizer").GetProperty("HasAuthorized").SetValue(null, true);
-
-            var modulePath = Path.Combine(cevioInstallPath, TARGET_FILE);
+            var modulePath = Path.Combine(cevioInstallPath, TARGET_PATCH_FILE);
             if (!File.Exists(modulePath))
             {
-                throw new FileNotFoundException($"{TARGET_FILE} not found");
+                throw new FileNotFoundException($"{TARGET_PATCH_FILE} not found");
             }
 
             // find method
             var module = ModuleDefinition.ReadModule(modulePath);
-            var type = module.GetType("CeVIO.ToolBarControl.ToolBarControl");
-            var method = type.Methods.First(m => m.Name == ".cctor");
+            var type = module.GetType(TARGET_PATCH_CLASS);
+            var method = type.Methods.First(m => m.Name == TARGET_PATCH_METHOD);
 
             // detect if patched
-            if (method.Body.Instructions.Any(x => x.Operand as string == TARGET_CLASS))
+            if (method.Body.Instructions.Any(x => x.Operand as string == AUTHORIZER_NAME))
             {
                 return false;
             }
@@ -60,15 +61,26 @@ namespace CeVIOActivator
             var processor = method.Body.GetILProcessor();
             var instructions = new Instruction[]
             {
+                // System.Reflection.Assembly.GetEntryAssembly().GetType("CeVIO.Editor.MissionAssistant.Authorizer").GetProperty("HasAuthorized").SetValue(null, true);
                 processor.Create(OpCodes.Call, module.ImportReference(typeof(Assembly).GetMethod("GetEntryAssembly"))),
-                processor.Create(OpCodes.Ldstr, TARGET_CLASS),
+                processor.Create(OpCodes.Ldstr, AUTHORIZER_NAME),
                 processor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Assembly).GetMethod("GetType", new Type[] { typeof(string) }))),
                 processor.Create(OpCodes.Ldstr, "HasAuthorized"),
                 processor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Type).GetMethod("GetProperty", new Type[] { typeof(string) }))),
                 processor.Create(OpCodes.Ldnull),
                 processor.Create(OpCodes.Ldc_I4_1),
                 processor.Create(OpCodes.Box, module.ImportReference(typeof(bool))),
-                processor.Create(OpCodes.Callvirt, module.ImportReference(typeof(PropertyInfo).GetMethod("SetValue", new Type[] { typeof(object), typeof(object) })))
+                processor.Create(OpCodes.Callvirt, module.ImportReference(typeof(PropertyInfo).GetMethod("SetValue", new Type[] { typeof(object), typeof(object) }))),
+                
+                // typeof(DateTime).GetField("MaxValue").SetValue(null, DateTime.Now);
+                processor.Create(OpCodes.Ldtoken, module.ImportReference(typeof(DateTime))),
+                processor.Create(OpCodes.Call, module.ImportReference(typeof(Type).GetMethod("GetTypeFromHandle"))),
+                processor.Create(OpCodes.Ldstr, "MaxValue"),
+                processor.Create(OpCodes.Call, module.ImportReference(typeof(Type).GetMethod("GetField", new Type[] { typeof(string) }))),
+                processor.Create(OpCodes.Ldnull),
+                processor.Create(OpCodes.Call, module.ImportReference(typeof(DateTime).GetMethod("get_Now"))),
+                processor.Create(OpCodes.Box, module.ImportReference(typeof(DateTime))),
+                processor.Create(OpCodes.Callvirt, module.ImportReference(typeof(FieldInfo).GetMethod("SetValue", new Type[] { typeof(object), typeof(object) }))),
             };
 
             // patch
@@ -78,7 +90,7 @@ namespace CeVIOActivator
             }
             
             // write
-            module.Write(TARGET_FILE);
+            module.Write(TARGET_PATCH_FILE);
 
             return true;
         }
@@ -106,8 +118,8 @@ namespace CeVIOActivator
 
         public static void ReplaceFile(string cevioInstallPath)
         {
-            var sourcePath = Path.GetFullPath(TARGET_FILE);
-            var targetPath = Path.Combine(cevioInstallPath, TARGET_FILE);
+            var sourcePath = Path.GetFullPath(TARGET_PATCH_FILE);
+            var targetPath = Path.Combine(cevioInstallPath, TARGET_PATCH_FILE);
             // backup unmodified file
             File.Copy(targetPath, targetPath + ".bak", true);
             // replace
