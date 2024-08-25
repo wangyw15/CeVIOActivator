@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using TypeAttributes = Mono.Cecil.TypeAttributes;
 
 namespace CeVIOActivator
 {
@@ -17,6 +18,9 @@ namespace CeVIOActivator
         private const string TARGET_PATCH_METHOD = ".cctor";
 
         private const string AUTHORIZER_NAME = "CeVIO.Editor.MissionAssistant.Authorizer";
+        private const string PRODUCT_LICENSE_NAME = "CeVIO.Editor.MissionAssistant.ProductLicense";
+
+        private const string BACKUP_POSTFIX = ".bak";
 
         [Obsolete("Directly patch executable will make it not work. Use PatchFile instead.")]
         public static void PatchExecutable(string cevioExecutablePath)
@@ -37,9 +41,28 @@ namespace CeVIOActivator
             processor.Replace(method.Body.Instructions[4], processor.Create(OpCodes.Call, setter));
             asm.Write("CeVIO AI.exe");
         }
-
-        public static bool PatchFile(string cevioInstallPath)
+        public static bool CheckPatched(string cevioInstallPath)
         {
+            var modulePath = Path.Combine(cevioInstallPath, TARGET_PATCH_FILE);
+            if (!File.Exists(modulePath))
+            {
+                throw new FileNotFoundException($"{TARGET_PATCH_FILE} not found");
+            }
+
+            var module = ModuleDefinition.ReadModule(modulePath);
+            var type = module.GetType(TARGET_PATCH_CLASS);
+            var method = type.Methods.First(m => m.Name == TARGET_PATCH_METHOD);
+
+            return method.Body.Instructions.Any(x => x.Operand as string == AUTHORIZER_NAME);
+        }
+
+        public static bool PatchFile(string cevioInstallPath, TimeSpan? MaxOfflineDuration = null)
+        {
+            if (MaxOfflineDuration == null)
+            {
+                MaxOfflineDuration = TimeSpan.FromDays(365);
+            }
+
             var modulePath = Path.Combine(cevioInstallPath, TARGET_PATCH_FILE);
             if (!File.Exists(modulePath))
             {
@@ -71,6 +94,19 @@ namespace CeVIOActivator
                 processor.Create(OpCodes.Ldc_I4_1),
                 processor.Create(OpCodes.Box, module.ImportReference(typeof(bool))),
                 processor.Create(OpCodes.Callvirt, module.ImportReference(typeof(PropertyInfo).GetMethod("SetValue", new Type[] { typeof(object), typeof(object) }))),
+
+                // Assembly.GetEntryAssembly().GetType("CeVIO.Editor.MissionAssistant.ProductLicense").GetField("OfflineAcceptablePeriod").SetValue(null, TimeSpan.FromDays(ActivateDurationDays));
+                // currently it is not usable
+                processor.Create(OpCodes.Call, module.ImportReference(typeof(Assembly).GetMethod("GetEntryAssembly"))),
+                processor.Create(OpCodes.Ldstr, PRODUCT_LICENSE_NAME),
+                processor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Assembly).GetMethod("GetType", new Type[] { typeof(string) }))),
+                processor.Create(OpCodes.Ldstr, "OfflineAcceptablePeriod"),
+                processor.Create(OpCodes.Callvirt, module.ImportReference(typeof(Type).GetMethod("GetField", new Type[] { typeof(string) }))),
+                processor.Create(OpCodes.Ldnull),
+                processor.Create(OpCodes.Ldc_R8, MaxOfflineDuration.Value.TotalDays),
+                processor.Create(OpCodes.Call, module.ImportReference(typeof(TimeSpan).GetMethod("FromDays", new Type[] { typeof(double) }))),
+                processor.Create(OpCodes.Box, module.ImportReference(typeof(TimeSpan))),
+                processor.Create(OpCodes.Callvirt, module.ImportReference(typeof(PropertyInfo).GetMethod("SetValue", new Type[] { typeof(object), typeof(object) }))),
                 
                 // typeof(DateTime).GetField("MaxValue").SetValue(null, DateTime.Now);
                 processor.Create(OpCodes.Ldtoken, module.ImportReference(typeof(DateTime))),
@@ -88,6 +124,9 @@ namespace CeVIOActivator
             {
                 processor.InsertBefore(method.Body.Instructions[0], instructions[i]);
             }
+
+            // remove BeforeFieldInit flag
+            type.Attributes &= ~TypeAttributes.BeforeFieldInit;
             
             // write
             module.Write(TARGET_PATCH_FILE);
@@ -121,7 +160,10 @@ namespace CeVIOActivator
             var sourcePath = Path.GetFullPath(TARGET_PATCH_FILE);
             var targetPath = Path.Combine(cevioInstallPath, TARGET_PATCH_FILE);
             // backup unmodified file
-            File.Copy(targetPath, targetPath + ".bak", true);
+            if (!File.Exists(targetPath + BACKUP_POSTFIX))
+            {
+                File.Copy(targetPath, targetPath + BACKUP_POSTFIX, true);
+            }
             // replace
             File.Copy(sourcePath, targetPath, true);
             // delete source

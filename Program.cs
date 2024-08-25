@@ -7,9 +7,12 @@ namespace CeVIOActivator
     class Program
     {
         // N54KC-7U2ZL-PQZBM-SPF8H suzuki trial key
+        // default activation period is 365 days
 
         static void Main(string[] args)
         {
+            var duration = TimeSpan.FromDays(365);
+
             var executablePath = GetCeVIOExecutable();
             if (string.IsNullOrEmpty(executablePath))
             {
@@ -19,7 +22,8 @@ namespace CeVIOActivator
             
             Console.WriteLine("Loading...");
             var activator = new Activator(executablePath);
-            activator.ActivateProducts(activator.OfflineAcceptablePeriod);
+            duration = activator.OfflineAcceptablePeriod;
+            activator.ActivateProducts(duration);
             Console.WriteLine("Activated all packages");
 
             activator.GenerateLicenseSummary();
@@ -27,7 +31,7 @@ namespace CeVIOActivator
 
             var installFolder = GetCeVIOInstallFolder();
 
-            var thisTimePatched = AssemblyPatcher.PatchFile(installFolder);
+            var thisTimePatched = AssemblyPatcher.PatchFile(installFolder, duration);
 
             if (thisTimePatched)
             {
@@ -45,7 +49,7 @@ namespace CeVIOActivator
                 Console.WriteLine("CeVIO.ToolBarControl.dll already patched, skip");
             }
             
-            Console.WriteLine("You should reactivate CeVIO AI before " + (DateTime.Now + activator.OfflineAcceptablePeriod).ToLongDateString());
+            Console.WriteLine("You should reactivate CeVIO AI before " + (DateTime.Now + duration).ToLongDateString());
 
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey();
