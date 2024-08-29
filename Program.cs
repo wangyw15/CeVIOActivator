@@ -6,12 +6,9 @@ namespace CeVIOActivator
 {
     class Program
     {
-        // N54KC-7U2ZL-PQZBM-SPF8H suzuki trial key
-        // default activation period is 365 days
-
         static void Main(string[] args)
         {
-            var duration = TimeSpan.FromDays(365);
+            var installFolder = GetCeVIOInstallFolder();
 
             var executablePath = GetCeVIOExecutable();
             if (string.IsNullOrEmpty(executablePath))
@@ -22,34 +19,18 @@ namespace CeVIOActivator
             
             Console.WriteLine("Loading...");
             var activator = new Activator(executablePath);
-            duration = activator.OfflineAcceptablePeriod;
-            activator.ActivateProducts(duration);
+
+            activator.ActivateProducts();
             Console.WriteLine("Activated all packages");
 
             activator.GenerateLicenseSummary();
             Console.WriteLine("Authorized");
 
-            var installFolder = GetCeVIOInstallFolder();
+            AssemblyPatcher.PatchExecutable(installFolder);
+            AssemblyPatcher.BypassAuthentication(installFolder);
+            AssemblyPatcher.DeleteNgen(installFolder);
 
-            var thisTimePatched = AssemblyPatcher.PatchFile(installFolder, duration);
-
-            if (thisTimePatched)
-            {
-                Console.WriteLine("Patching CeVIO.ToolBarControl.dll");
-                Console.WriteLine("Deleting Ngen");
-                AssemblyPatcher.DeleteNgen(installFolder);
-
-                activator.Dispose(); // release the assembly
-
-                Console.WriteLine("Replacing the file to enable offline export");
-                AssemblyPatcher.ReplaceFile(installFolder);
-            }
-            else
-            {
-                Console.WriteLine("CeVIO.ToolBarControl.dll already patched, skip");
-            }
-            
-            Console.WriteLine("You should reactivate CeVIO AI before " + (DateTime.Now + duration).ToLongDateString());
+            Console.WriteLine("Activate complete");
 
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey();

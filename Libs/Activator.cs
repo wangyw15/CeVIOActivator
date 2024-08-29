@@ -24,7 +24,7 @@ namespace CeVIOActivator
             _ProductLicense = new ProductLicense(_Assembly);
         }
 
-        public void ActivateProducts(TimeSpan? validateTime = null)
+        public void ActivateProducts(DateTime? expire = null)
         {
             var packageCodes = GetPackageCodes();
             var mainPackageCode = GetCeVIOProductCode();
@@ -33,21 +33,20 @@ namespace CeVIOActivator
             {
                 if (code.ToString() == mainPackageCode)
                 {
-                    WriteLicenseData($"{_LicenseSummary.KeyPath}\\Creative Studio\\Product", validateTime);
+                    WriteLicenseData($"{_LicenseSummary.KeyPath}\\Creative Studio\\Product", expire);
                 }
                 else
                 {
-                    WriteLicenseData(_LicenseSummary.KeyPath + "\\Product\\{" + code.ToString().ToUpper() + "}", validateTime);
+                    WriteLicenseData(_LicenseSummary.KeyPath + "\\Product\\{" + code.ToString().ToUpper() + "}", expire);
                 }
             }
         }
 
-        public void WriteLicenseData(string keyPath, TimeSpan? validateTime = null)
+        public void WriteLicenseData(string keyPath, DateTime? expire = null)
         {
             using (var registryKey = Registry.CurrentUser.CreateSubKey(keyPath))
             {
-                var expire = DateTime.Now + (validateTime ?? TimeSpan.FromDays(365));
-                var data = _ProductLicense.ScrambleDateTime(expire);
+                var data = _ProductLicense.ScrambleDateTime(expire ?? DateTime.MaxValue);
                 registryKey.SetValue(null, _EmptyData);
                 registryKey.SetValue("ProductKey", ActivationKey);
                 registryKey.SetValue("License", data);
