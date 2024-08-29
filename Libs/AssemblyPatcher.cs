@@ -1,5 +1,5 @@
-﻿using Mono.Cecil;
-using Mono.Cecil.Cil;
+﻿using dnlib.DotNet;
+using dnlib.DotNet.Emit;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -12,30 +12,30 @@ namespace CeVIOActivator
     {
         private const string BACKUP_POSTFIX = ".bak";
 
-        private static void ReplaceToReturnTrue(MethodDefinition method)
+        private static void ReplaceToReturnTrue(MethodDef method)
         {
-            var processor = method.Body.GetILProcessor();
-            processor.Clear();
-            processor.Emit(OpCodes.Ldc_I4_1);
-            processor.Emit(OpCodes.Ret);
+            method.Body.Instructions.Clear();
+            method.Body.Instructions.Add(OpCodes.Ldc_I4_1.ToInstruction());
+            method.Body.Instructions.Add(OpCodes.Ret.ToInstruction());
         }
 
-        private static void ClearMethodBody(MethodDefinition method)
+        private static void ClearMethodBody(MethodDef method)
         {
-            var processor = method.Body.GetILProcessor();
-            processor.Clear();
-            processor.Emit(OpCodes.Ret);
+            method.Body.Instructions.Clear();
+            method.Body.Instructions.Add(OpCodes.Ret.ToInstruction());
         }
 
         private static void MakeBackup(string cevioInstallPath, string filename)
         {
-            if (!File.Exists(filename))
+            var sourcePath = Path.Combine(cevioInstallPath, filename);
+            var backupPath = Path.Combine(cevioInstallPath, filename + BACKUP_POSTFIX);
+
+            if (!File.Exists(sourcePath))
             {
                 Console.WriteLine($"[Backup] {filename} Not found");
                 return;
             }
 
-            var backupPath = Path.Combine(cevioInstallPath, filename + BACKUP_POSTFIX);
             if (File.Exists(backupPath))
             {
                 Console.WriteLine("[Backup] " + backupPath + " already exists, skip backup");
@@ -43,35 +43,43 @@ namespace CeVIOActivator
             }
 
             Console.WriteLine("[Backup] " + filename);
-            File.Copy(filename, backupPath);
+            File.Copy(sourcePath, backupPath);
+        }
+
+        public static void WriteMixed(this ModuleDefMD module, string filename)
+        {
+            if (module.IsILOnly)
+            {
+                module.Write(filename);
+            }
+            else
+            {
+                module.NativeWrite(filename);
+            }
         }
 
         public static void PatchExecutable(string cevioInstallPath, bool dryrun = false)
         {
-            var resolver = new DefaultAssemblyResolver();
-            resolver.AddSearchDirectory(cevioInstallPath);
-
             // read assembly
             var cevioExecutablePath = Path.Combine(cevioInstallPath, "CeVIO AI.exe");
-            var asm = AssemblyDefinition.ReadAssembly(cevioExecutablePath, new ReaderParameters
-            {
-                AssemblyResolver = resolver
-            });
+            var module = ModuleDefMD.Load(cevioExecutablePath);
 
             // CeVIO.Editor.MissionAssistant.Authorizer
-            var authorizerType = asm.MainModule.GetType("CeVIO.Editor.MissionAssistant.Authorizer");
+            var authorizerType = module.Types.Single(m => m.FullName == "CeVIO.Editor.MissionAssistant.Authorizer");
 
             // CeVIO.Editor.MissionAssistant.Authorizer.ForciblyAuthorize
             var forciblyAuthorizeMethod = authorizerType.Methods.Single(m => m.Name == "ForciblyAuthorize");
             {
+                var instructions = forciblyAuthorizeMethod.Body.Instructions;
+
                 // find instruction
                 Instruction targetInstruction = null;
-                foreach (var instruction in forciblyAuthorizeMethod.Body.Instructions)
+                foreach (var instruction in instructions)
                 {
                     if (instruction.OpCode == OpCodes.Ldsfld)
                     {
-                        var operand = (FieldReference)instruction.Operand;
-                        if (operand.FieldType.FullName == typeof(DateTime).FullName &&
+                        var operand = (MemberRef)instruction.Operand;
+                        if (operand.DeclaringType.FullName == typeof(DateTime).FullName &&
                             operand.Name == nameof(DateTime.MaxValue))
                         {
                             targetInstruction = instruction;
@@ -85,22 +93,8 @@ namespace CeVIOActivator
                 {
                     Console.WriteLine("[Patch][CeVIO AI.exe] CeVIO.Editor.MissionAssistant.Authorizer.ForciblyAuthorize");
 
-                    var processor = forciblyAuthorizeMethod.Body.GetILProcessor();
-                    var replacedInstruction = processor.Create(
-                        OpCodes.Call,
-                        asm.MainModule.ImportReference(
-                            typeof(DateTime).GetProperty(nameof(DateTime.Now)).GetMethod
-                            )
-                        );
-                    processor.Replace(
-                        targetInstruction,
-                        processor.Create(
-                            OpCodes.Call,
-                            asm.MainModule.ImportReference(
-                                typeof(DateTime).GetProperty(nameof(DateTime.Now)).GetMethod
-                                )
-                            )
-                        );
+                    instructions[instructions.IndexOf(targetInstruction)] = OpCodes.Call.ToInstruction(
+                        module.Import(typeof(DateTime).GetProperty(nameof(DateTime.Now)).GetMethod));
                 }
                 else
                 {
@@ -111,17 +105,19 @@ namespace CeVIOActivator
             // CeVIO.Editor.MissionAssistant.Authorizer.Authorize
             var authorizeMethod = authorizerType.Methods.Single(m => m.Name == "Authorize");
             {
+                var instructions = authorizeMethod.Body.Instructions;
+
                 Instruction targetInstruction = null;
-                for (var i = 0; i < authorizerType.Methods.Count; i++)
+                for (var i = 0; i < instructions.Count; i++)
                 {
-                    var instruction = authorizeMethod.Body.Instructions[i];
+                    var instruction = instructions[i];
 
                     if (instruction.OpCode == OpCodes.Throw)
                     {
-                        if (authorizeMethod.Body.Instructions[i - 2].OpCode == OpCodes.Call &&
-                            authorizeMethod.Body.Instructions[i - 1].OpCode == OpCodes.Newobj)
+                        if (instructions[i - 2].OpCode == OpCodes.Call &&
+                            instructions[i - 1].OpCode == OpCodes.Newobj)
                         {
-                            var operand = (MethodReference)authorizeMethod.Body.Instructions[i - 2].Operand;
+                            var operand = (IMemberDef)instructions[i - 2].Operand;
                             if (operand.Name == "get_Message_License_Error_Authorization")
                             {
                                 targetInstruction = instruction;
@@ -140,28 +136,28 @@ namespace CeVIOActivator
                 {
                     Console.WriteLine("[Patch][CeVIO AI.exe] CeVIO.Editor.MissionAssistant.Authorizer.Authorize");
 
-                    var processor = authorizeMethod.Body.GetILProcessor();
-                    var reserveCount = authorizeMethod.Body.Instructions.IndexOf(targetInstruction) + 1;
-                    while (authorizeMethod.Body.Instructions.Count > reserveCount)
+                    var reserveCount = instructions.IndexOf(targetInstruction) + 1;
+                    while (instructions.Count > reserveCount)
                     {
-                        processor.Remove(authorizeMethod.Body.Instructions[reserveCount]);
+                        instructions.Remove(instructions[reserveCount]);
                     }
-                    processor.Emit(OpCodes.Ldloc_0);
-                    processor.Emit(OpCodes.Call, forciblyAuthorizeMethod);
-                    processor.Emit(OpCodes.Ret);
+                    instructions.Add(OpCodes.Ldloc_0.ToInstruction());
+                    instructions.Add(OpCodes.Call.ToInstruction(forciblyAuthorizeMethod));
+                    instructions.Add(OpCodes.Ret.ToInstruction());
 
                     // add custom code
                     // nop
                     foreach (var i in new int[] { 5, 1, 0 })
                     {
-                        processor.RemoveAt(i);
+                        instructions.RemoveAt(i);
                     }
 
                     // replace
-                    processor.Replace(14, processor.Create(OpCodes.Stloc_0));
-                    processor.Replace(16, processor.Create(OpCodes.Ldnull));
-                    processor.InsertAfter(16, processor.Create(OpCodes.Ceq));
-                    processor.Replace(18, processor.Create(OpCodes.Brfalse_S, authorizeMethod.Body.Instructions[22]));
+                    instructions[14] = OpCodes.Stloc_0.ToInstruction();
+                    instructions[16] = OpCodes.Ldnull.ToInstruction();
+                    instructions.Insert(17, OpCodes.Ceq.ToInstruction());
+                    instructions[18] = OpCodes.Brfalse_S.ToInstruction(authorizeMethod.Body.Instructions[22]);
+
                     authorizeMethod.Body.ExceptionHandlers.Clear();
                 }
                 else
@@ -179,7 +175,7 @@ namespace CeVIOActivator
             // var tryOfflineStartupMethod = authorizerType.Methods.Single(m => m.Name == "TryOfflineStartup");
 
             // CeVIO.Editor.MissionAssistant.ProductLicense
-            var productLicenseType = asm.MainModule.GetType("CeVIO.Editor.MissionAssistant.ProductLicense");
+            var productLicenseType = module.Types.Single(t => t.FullName == "CeVIO.Editor.MissionAssistant.ProductLicense");
 
             // CeVIO.Editor.MissionAssistant.ProductLicense.AllowsOffline.get
             var allowsOfflineGet = productLicenseType.Properties.Single(p => p.Name == "AllowsOffline").GetMethod;
@@ -190,9 +186,11 @@ namespace CeVIOActivator
             var offlineAcceptablePeriodField = productLicenseType.Fields.Single(p => p.Name == "OfflineAcceptablePeriod");
             var productLicenseCctor = productLicenseType.Methods.Single(m => m.Name == ".cctor");
             {
+                var instructions = productLicenseCctor.Body.Instructions;
+
                 // find instruction
                 Instruction targetInstruction = null;
-                foreach (var instruction in productLicenseCctor.Body.Instructions)
+                foreach (var instruction in instructions)
                 {
                     if (instruction.OpCode == OpCodes.Ldc_R8 && (double)instruction.Operand == 365)
                     {
@@ -206,15 +204,11 @@ namespace CeVIOActivator
                 {
                     Console.WriteLine("[Patch][CeVIO AI.exe] CeVIO.Editor.MissionAssistant.ProductLicense.OfflineAcceptablePeriod");
 
-                    var processor = productLicenseCctor.Body.GetILProcessor();
-                    processor.Replace(
-                        productLicenseCctor.Body.Instructions.IndexOf(targetInstruction) + 1,
-                        processor.Create(
-                            OpCodes.Ldsfld,
-                            asm.MainModule.ImportReference(typeof(TimeSpan).GetField(nameof(TimeSpan.MaxValue)))
-                            )
-                        );
-                    processor.Remove(targetInstruction);
+                    instructions[instructions.IndexOf(targetInstruction) + 1] = 
+                        OpCodes.Ldsfld.ToInstruction(
+                            module.Import(typeof(TimeSpan).GetField(nameof(TimeSpan.MaxValue)))
+                            );
+                    instructions.Remove(targetInstruction);
                 }
                 else
                 {
@@ -232,7 +226,7 @@ namespace CeVIOActivator
 
             // save
             Console.WriteLine("[Save] " + cevioExecutablePath);
-            asm.Write(cevioExecutablePath);
+            module.Write(cevioExecutablePath);
         }
 
         public static void DeleteNgen(string cevioInstallPath)
@@ -283,8 +277,8 @@ namespace CeVIOActivator
                 }
 
                 // open module
-                var module = ModuleDefinition.ReadModule(modulePath);
-                var type = module.GetType(typeName);
+                var module = ModuleDefMD.Load(modulePath);
+                var type = module.Types.Single(t => t.FullName == typeName);
                 var methodDef = type.Methods.Single(m => m.Name == methodName);
 
                 // check patched
@@ -309,48 +303,51 @@ namespace CeVIOActivator
 
                 // save
                 Console.WriteLine("[Save] " + modulePath);
-                module.Write(modulePath);
+                module.WriteMixed(modulePath);
             }
 
             // CeVIO.Song tssinger2.TSSingerCLI..cctor
-            var songModulePath = Path.Combine(cevioInstallPath, "CeVIO.Song.dll");
-            var songModule = ModuleDefinition.ReadModule(songModulePath);
-            var tssinger2Type = songModule.GetType("tssinger2.TSSingerCLI");
-            var cctor = tssinger2Type.Methods.Single(m => m.Name == ".cctor");
-            var reserveCount = 2;
-
-            // check patched
-            if (cctor.Body.Instructions.Count == reserveCount)
             {
-                if (cctor.Body.Instructions[0].OpCode == OpCodes.Ldc_I4_0 &&
-                    cctor.Body.Instructions[1].OpCode == OpCodes.Stsfld)
+                var modulePath = Path.Combine(cevioInstallPath, "CeVIO.Song.dll");
+                var module = ModuleDefMD.Load(modulePath);
+                var type = module.Types.Single(t => t.FullName == "tssinger2.TSSingerCLI");
+                var cctor = type.Methods.Single(m => m.Name == ".cctor");
+                var reserveCount = 2;
+
+                var instructions = cctor.Body.Instructions;
+
+                // check patched
+                if (instructions.Count == reserveCount)
                 {
-                    Console.WriteLine("[Skip][CeVIO.Song.dll] Already patched tssinger2.TSSingerCLI..cctor");
+                    if (instructions[0].OpCode == OpCodes.Ldc_I4_0 &&
+                        instructions[1].OpCode == OpCodes.Stsfld)
+                    {
+                        Console.WriteLine("[Skip][CeVIO.Song.dll] Already patched tssinger2.TSSingerCLI..cctor");
+                        return;
+                    }
+                }
+
+                Console.WriteLine("[Patch][CeVIO.Song.dll] tssinger2.TSSingerCLI..cctor");
+
+                // clear method body, only reserve "TSSingerCLI.trigger = 0;"
+                while (instructions.Count > reserveCount)
+                {
+                    instructions.Remove(instructions[reserveCount]);
+                }
+                instructions.Add(OpCodes.Ret.ToInstruction());
+
+                if (dryrun)
+                {
                     return;
                 }
+
+                // copy backup
+                MakeBackup(cevioInstallPath, "CeVIO.Song.dll");
+
+                // save
+                Console.WriteLine("[Save] " + modulePath);
+                module.WriteMixed(modulePath);
             }
-
-            Console.WriteLine("[Patch][CeVIO.Song.dll] tssinger2.TSSingerCLI..cctor");
-
-            // clear method body, only reserve "TSSingerCLI.trigger = 0;"
-            var cctorProcessor = cctor.Body.GetILProcessor();
-            while (cctor.Body.Instructions.Count > reserveCount)
-            {
-                cctorProcessor.Remove(cctor.Body.Instructions[reserveCount]);
-            }
-            cctorProcessor.Emit(OpCodes.Ret);
-
-            if (dryrun)
-            {
-                return;
-            }
-
-            // copy backup
-            MakeBackup(cevioInstallPath, "CeVIO.Song.dll");
-
-            // save
-            Console.WriteLine("[Save] " + songModulePath);
-            songModule.Write(songModulePath);
         }
     }
 }

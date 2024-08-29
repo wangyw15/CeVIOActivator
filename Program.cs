@@ -26,8 +26,14 @@ namespace CeVIOActivator
             activator.GenerateLicenseSummary();
             Console.WriteLine("Authorized");
 
+            activator.Dispose(); // release the assembly
+
+            Console.ReadLine();
+
             AssemblyPatcher.PatchExecutable(installFolder);
             AssemblyPatcher.BypassAuthentication(installFolder);
+
+            Console.WriteLine("Deleting Ngen");
             AssemblyPatcher.DeleteNgen(installFolder);
 
             Console.WriteLine("Activate complete");
