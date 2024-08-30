@@ -2,7 +2,7 @@
 using System.IO;
 using System.Reflection;
 
-namespace CeVIOActivator.Libs
+namespace CeVIOActivator.Core
 {
     internal class ProxyLoader : MarshalByRefObject
     {

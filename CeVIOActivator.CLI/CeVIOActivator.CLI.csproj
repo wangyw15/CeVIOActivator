@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{C4C89199-DB69-48E4-AD2F-18407B53683F}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>CeVIOActivator</RootNamespace>
-    <AssemblyName>CeVIOActivator</AssemblyName>
+    <RootNamespace>CeVIOActivator.CLI</RootNamespace>
+    <AssemblyName>CeVIOActivator.CLI</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -62,9 +62,6 @@
     <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="dnlib, Version=4.4.0.0, Culture=neutral, PublicKeyToken=50e96378b6e77999, processorArchitecture=MSIL">
-      <HintPath>packages\dnlib.4.4.0\lib\net45\dnlib.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Management" />
@@ -76,17 +73,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Libs\Activator.cs" />
-    <Compile Include="Libs\CeVIOAssemblyManager.cs" />
-    <Compile Include="Libs\CeVIO.cs" />
-    <Compile Include="Libs\AssemblyPatcher.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="packages.config" />
     <None Include="Properties\app.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CeVIOActivator.Core\CeVIOActivator.Core.csproj">
+      <Project>{9337c0ce-6aac-4a5c-9b1a-99f4eb77ba75}</Project>
+      <Name>CeVIOActivator.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace CeVIOActivator.Libs
+namespace CeVIOActivator.Core
 {
     public interface ICeVIO
     {

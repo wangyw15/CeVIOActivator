@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.3.32811.315
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CeVIOActivator", "CeVIOActivator.csproj", "{C4C89199-DB69-48E4-AD2F-18407B53683F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CeVIOActivator.CLI", "CeVIOActivator.CLI\CeVIOActivator.CLI.csproj", "{C4C89199-DB69-48E4-AD2F-18407B53683F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CeVIOActivator.Core", "CeVIOActivator.Core\CeVIOActivator.Core.csproj", "{9337C0CE-6AAC-4A5C-9B1A-99F4EB77BA75}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,14 @@ Global
 		{C4C89199-DB69-48E4-AD2F-18407B53683F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C4C89199-DB69-48E4-AD2F-18407B53683F}.Release|x64.ActiveCfg = Release|x64
 		{C4C89199-DB69-48E4-AD2F-18407B53683F}.Release|x64.Build.0 = Release|x64
+		{9337C0CE-6AAC-4A5C-9B1A-99F4EB77BA75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9337C0CE-6AAC-4A5C-9B1A-99F4EB77BA75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9337C0CE-6AAC-4A5C-9B1A-99F4EB77BA75}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9337C0CE-6AAC-4A5C-9B1A-99F4EB77BA75}.Debug|x64.Build.0 = Debug|Any CPU
+		{9337C0CE-6AAC-4A5C-9B1A-99F4EB77BA75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9337C0CE-6AAC-4A5C-9B1A-99F4EB77BA75}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9337C0CE-6AAC-4A5C-9B1A-99F4EB77BA75}.Release|x64.ActiveCfg = Release|Any CPU
+		{9337C0CE-6AAC-4A5C-9B1A-99F4EB77BA75}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,11 +1,11 @@
 ﻿using System;
 using System.IO;
 using Microsoft.Win32;
-using CeVIOActivator.Libs;
+using CeVIOActivator.Core;
 
-using Activator = CeVIOActivator.Libs.Activator;
+using Activator = CeVIOActivator.Core.Activator;
 
-namespace CeVIOActivator
+namespace CeVIOActivator.CLI
 {
     class Program
     {
@@ -37,8 +37,7 @@ namespace CeVIOActivator
 
             assembly.Dispose(); // release the assembly
 
-            AssemblyPatcher.BypassAuthentication(installFolder);
-            AssemblyPatcher.PatchExecutable(installFolder);
+            AssemblyPatcher.Patch(installFolder);
 
             Console.WriteLine("Deleting Ngen");
             AssemblyPatcher.DeleteNgen(installFolder);
