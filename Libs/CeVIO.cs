@@ -1,112 +1,71 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
-using System.Text;
-using System.Xml.Linq;
 
-namespace CeVIO
+namespace CeVIOActivator.Libs
 {
-    internal class ProxyDomain : MarshalByRefObject
+    public interface ICeVIO
     {
-        public string AssemblyBasePath { get; set; }
-
-        public Assembly LoadAssembly(string path)
-        {
-            return Assembly.LoadFrom(path);
-        }
+        Assembly CeVIOAssembly { get; set; }
     }
 
-    public class CeVIOAssembly : IDisposable
+    public class App : MarshalByRefObject, ICeVIO
     {
-        public Assembly Instance { get; private set; }
+        private Assembly _assembly;
 
-        private AppDomain _Domain { get; }
-        private Type _EditorResource { get; }
+        private Type _type = null;
 
-        public CeVIOAssembly(string cevioExecutablePath)
+        public Assembly CeVIOAssembly
         {
-            AppDomain.CurrentDomain.AssemblyResolve += (sender, e) =>
+            get
             {
-                var name = new AssemblyName(e.Name).Name;
-                foreach (var i in Directory.GetFiles(Path.GetDirectoryName(cevioExecutablePath)))
-                {
-                    if (Path.GetFileNameWithoutExtension(i) == name)
-                    {
-                        return Assembly.LoadFile(i);
-                    }
-                }
-                return null;
-            };
-
-            _Domain = AppDomain.CreateDomain("CeVIO", AppDomain.CurrentDomain.Evidence, AppDomain.CurrentDomain.SetupInformation);
-            var loader = (ProxyDomain)_Domain.CreateInstanceAndUnwrap(typeof(ProxyDomain).Assembly.FullName, typeof(ProxyDomain).FullName);
-
-            Instance = loader.LoadAssembly(cevioExecutablePath);
-            _EditorResource = Instance.GetType("CeVIO.Editor.Properties.Resources");
-        }
-
-        public object GetEditorResource(string name)
-        {
-            return _EditorResource.GetProperty(name, BindingFlags.Static | BindingFlags.Public).GetValue(null);
-        }
-
-        public T GetEditorResource<T>(string name)
-        {
-            return (T)GetEditorResource(name);
-        }
-
-        public void Dispose()
-        {
-            Instance = null;
-            AppDomain.Unload(_Domain);
-        }
-    }
-
-    public class App
-    {
-        private CeVIOAssembly _Assembly;
-        
-        public Type Instance { get; }
-
-        public App(CeVIOAssembly assembly)
-        {
-            _Assembly = assembly;
-            Instance = _Assembly.Instance.GetType("CeVIO.Editor.App");
+                return _assembly;
+            }
+            set
+            {
+                _assembly = value;
+                _type = _assembly.GetType("CeVIO.Editor.App");
+            } 
         }
         
         public string CommonName
         {
             get
             {
-                var name = Instance.GetField("CommonName");
+                var name = _type.GetField("CommonName");
                 return name.GetValue(null) as string;
             }
         }
     }
     
-    public class ProductLicense
+    public class ProductLicense : MarshalByRefObject, ICeVIO
     {
-        private CeVIOAssembly _Assembly;
+        private Assembly _assembly;
 
-        public Type Instance { get; }
+        private Type _type = null;
 
-        public ProductLicense(CeVIOAssembly assembly)
+        public Assembly CeVIOAssembly
         {
-            _Assembly = assembly;
-            Instance = _Assembly.Instance.GetType("CeVIO.Editor.MissionAssistant.ProductLicense");
+            get
+            {
+                return _assembly;
+            }
+            set
+            {
+                _assembly = value;
+                _type = _assembly.GetType("CeVIO.Editor.MissionAssistant.ProductLicense");
+            }
         }
-
         
         public DateTime DescrambleDateTime(byte[] value)
         {
-            var method = Instance.GetMethod("DescrambleDateTime", BindingFlags.Static | BindingFlags.NonPublic);
+            var method = _type.GetMethod("DescrambleDateTime", BindingFlags.Static | BindingFlags.NonPublic);
             return (DateTime)method.Invoke(null, new object[] { value });
         }
 
         public byte[] ScrambleDateTime(DateTime value)
         {
-            var method = Instance.GetMethod("ScrambleDateTime", BindingFlags.Static | BindingFlags.NonPublic);
+            var method = _type.GetMethod("ScrambleDateTime", BindingFlags.Static | BindingFlags.NonPublic);
             return (byte[])method.Invoke(null, new object[] { value });
         }
 
@@ -114,91 +73,46 @@ namespace CeVIO
         {
             get
             {
-                var span = Instance.GetField("OfflineAcceptablePeriod");
+                var span = _type.GetField("OfflineAcceptablePeriod");
                 return (TimeSpan)span.GetValue(null);
             }
         }
     }
 
-    public class Authorizer
+    public class LicenseSummary : MarshalByRefObject, ICeVIO
     {
-        private CeVIOAssembly _Assembly;
+        private Assembly _assembly;
 
-        public Type Instance { get; }
+        private Type _type = null;
 
-        public Authorizer(CeVIOAssembly assembly)
-        {
-            _Assembly = assembly;
-            Instance = _Assembly.Instance.GetType("CeVIO.Editor.MissionAssistant.Authorizer");
-        }
-        
-        public IEnumerable<object> ReadLicenses()
-        {
-            var read = Instance.GetMethod("ReadLicenses", BindingFlags.Static | BindingFlags.NonPublic);
-            return read.Invoke(null, null) as IEnumerable<object>;
-        }
-
-        public IEnumerable<object> Licenses
+        public Assembly CeVIOAssembly
         {
             get
             {
-                var licenses = Instance.GetProperty("Licenses");
-                return licenses.GetValue(null) as IEnumerable<object>;
+                return _assembly;
             }
-        }
-    }
-
-    public class LicenseSummary
-    {
-        private CeVIOAssembly _Assembly;
-
-        public Type Instance { get; }
-
-        public LicenseSummary(CeVIOAssembly assembly)
-        {
-            _Assembly = assembly;
-            Instance = _Assembly.Instance.GetType("CeVIO.Editor.MissionAssistant.LicenseSummary");
-        }
-        
-        public IEnumerable<object> Packages
-        {
-            get
+            set
             {
-                var packages = Instance.GetProperty("Packages");
-                return packages.GetValue(null) as IEnumerable<object>;
+                _assembly = value;
+                _type = _assembly.GetType("CeVIO.Editor.MissionAssistant.LicenseSummary");
             }
-        }
-
-        public Encoding encoding
-        {
-            get
-            {
-                var e = Instance.GetField("encoding", BindingFlags.NonPublic | BindingFlags.Static);
-                return e.GetValue(null) as Encoding;
-            }
-        }
-
-        public XElement Load()
-        {
-            var load = Instance.GetMethod("Load", BindingFlags.NonPublic | BindingFlags.Static);
-            return load.Invoke(null, null) as XElement;
         }
 
         public void Save()
         {
-            var save = Instance.GetMethod("Save", BindingFlags.Static | BindingFlags.Public);
+            var save = _type.GetMethod("Save", BindingFlags.Static | BindingFlags.Public);
             save.Invoke(null, null);
         }
 
         public void AddFeature(Feature feature)
         {
-            var add = Instance.GetMethod("AddFeature", BindingFlags.NonPublic | BindingFlags.Static);
+            var add = _type.GetMethod("AddFeature", BindingFlags.NonPublic | BindingFlags.Static);
             add.Invoke(null, new object[] { feature });
         }
 
         public void AddPackageCodes(IEnumerable<Guid> codes)
         {
-            var add = Instance.GetMethod("AddPackageCodes", new Type[] { typeof(IEnumerable<Guid>) });
+            var add = _type.GetMethod("AddPackageCodes", new Type[] { typeof(IEnumerable<Guid>) });
             add.Invoke(null, new object[] { codes });
         }
 
@@ -206,16 +120,7 @@ namespace CeVIO
         {
             get
             {
-                var keyPath = Instance.GetField("keyPath");
-                return keyPath.GetValue(null) as string;
-            }
-        }
-
-        public string ValueName
-        {
-            get
-            {
-                var keyPath = Instance.GetField("valueName");
+                var keyPath = _type.GetField("keyPath");
                 return keyPath.GetValue(null) as string;
             }
         }
@@ -224,7 +129,7 @@ namespace CeVIO
         {
             get
             {
-                return Instance.GetNestedType("PackageUnit", BindingFlags.NonPublic);
+                return _type.GetNestedType("PackageUnit", BindingFlags.NonPublic);
             }
         }
     }

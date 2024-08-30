@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace CeVIOActivator
+namespace CeVIOActivator.Libs
 {
     public static class AssemblyPatcher
     {
@@ -23,6 +23,10 @@ namespace CeVIOActivator
         {
             method.Body.Instructions.Clear();
             method.Body.Instructions.Add(OpCodes.Ret.ToInstruction());
+            if (method.Body.HasExceptionHandlers)
+            {
+                method.Body.ExceptionHandlers.Clear();
+            }
         }
 
         private static void MakeBackup(string cevioInstallPath, string filename)
@@ -46,7 +50,7 @@ namespace CeVIOActivator
             File.Copy(sourcePath, backupPath);
         }
 
-        public static void WriteMixed(this ModuleDefMD module, string filename)
+        public static void Save(this ModuleDefMD module, string filename)
         {
             if (module.IsILOnly)
             {
@@ -62,7 +66,7 @@ namespace CeVIOActivator
         {
             // read assembly
             var cevioExecutablePath = Path.Combine(cevioInstallPath, "CeVIO AI.exe");
-            var module = ModuleDefMD.Load(cevioExecutablePath);
+            var module = ModuleDefMD.Load(File.ReadAllBytes(cevioExecutablePath));
 
             // CeVIO.Editor.MissionAssistant.Authorizer
             var authorizerType = module.Types.Single(m => m.FullName == "CeVIO.Editor.MissionAssistant.Authorizer");
@@ -277,7 +281,7 @@ namespace CeVIOActivator
                 }
 
                 // open module
-                var module = ModuleDefMD.Load(modulePath);
+                var module = ModuleDefMD.Load(File.ReadAllBytes(modulePath));
                 var type = module.Types.Single(t => t.FullName == typeName);
                 var methodDef = type.Methods.Single(m => m.Name == methodName);
 
@@ -303,13 +307,13 @@ namespace CeVIOActivator
 
                 // save
                 Console.WriteLine("[Save] " + modulePath);
-                module.WriteMixed(modulePath);
+                module.Save(modulePath);
             }
 
             // CeVIO.Song tssinger2.TSSingerCLI..cctor
             {
                 var modulePath = Path.Combine(cevioInstallPath, "CeVIO.Song.dll");
-                var module = ModuleDefMD.Load(modulePath);
+                var module = ModuleDefMD.Load(File.ReadAllBytes(modulePath));
                 var type = module.Types.Single(t => t.FullName == "tssinger2.TSSingerCLI");
                 var cctor = type.Methods.Single(m => m.Name == ".cctor");
                 var reserveCount = 2;
@@ -346,7 +350,7 @@ namespace CeVIOActivator
 
                 // save
                 Console.WriteLine("[Save] " + modulePath);
-                module.WriteMixed(modulePath);
+                module.Save(modulePath);
             }
         }
     }

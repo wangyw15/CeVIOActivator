@@ -1,6 +1,9 @@
 ﻿using System;
 using System.IO;
 using Microsoft.Win32;
+using CeVIOActivator.Libs;
+
+using Activator = CeVIOActivator.Libs.Activator;
 
 namespace CeVIOActivator
 {
@@ -16,9 +19,15 @@ namespace CeVIOActivator
                 Console.Write("CeVIO AI.exe not found, please specify the file: ");
                 executablePath = (Console.ReadLine() ?? "").Replace("\"", "");
             }
-            
-            Console.WriteLine("Loading...");
-            var activator = new Activator(executablePath);
+
+            Console.WriteLine("Start patching...");
+
+            Console.WriteLine("Writing registry...");
+            var assembly = new CeVIOAssemblyManager(executablePath);
+            var activator = assembly.CreateInstance<Activator>();
+
+            // create instances
+            activator.Initialize(assembly);
 
             activator.ActivateProducts();
             Console.WriteLine("Activated all packages");
@@ -26,12 +35,10 @@ namespace CeVIOActivator
             activator.GenerateLicenseSummary();
             Console.WriteLine("Authorized");
 
-            activator.Dispose(); // release the assembly
+            assembly.Dispose(); // release the assembly
 
-            Console.ReadLine();
-
-            AssemblyPatcher.PatchExecutable(installFolder);
             AssemblyPatcher.BypassAuthentication(installFolder);
+            AssemblyPatcher.PatchExecutable(installFolder);
 
             Console.WriteLine("Deleting Ngen");
             AssemblyPatcher.DeleteNgen(installFolder);

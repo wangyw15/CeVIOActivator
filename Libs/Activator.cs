@@ -1,27 +1,24 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
-using CeVIO;
 
-namespace CeVIOActivator
+namespace CeVIOActivator.Libs
 {
-    public class Activator : IDisposable
+    public class Activator : MarshalByRefObject
     {
         public string ActivationKey { get; set; } = "00000-00000-00000-00000";
         
         private readonly byte[] _EmptyData = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-        private CeVIOAssembly _Assembly;
-        private App _App;
-        private LicenseSummary _LicenseSummary;
-        private ProductLicense _ProductLicense;
+        private App _app;
+        private LicenseSummary _licenseSummary;
+        private ProductLicense _productLicense;
 
-        public Activator(string cevioPath)
+        public void Initialize(CeVIOAssemblyManager manager)
         {
-            _Assembly = new CeVIOAssembly(cevioPath);
-            _App = new App(_Assembly);
-            _LicenseSummary = new LicenseSummary(_Assembly);
-            _ProductLicense = new ProductLicense(_Assembly);
+            _app = manager.CreateCeVIOInstance<App>();
+            _productLicense = manager.CreateCeVIOInstance<ProductLicense>();
+            _licenseSummary = manager.CreateCeVIOInstance<LicenseSummary>();
         }
 
         public void ActivateProducts(DateTime? expire = null)
@@ -33,11 +30,11 @@ namespace CeVIOActivator
             {
                 if (code.ToString() == mainPackageCode)
                 {
-                    WriteLicenseData($"{_LicenseSummary.KeyPath}\\Creative Studio\\Product", expire);
+                    WriteLicenseData($"{_licenseSummary.KeyPath}\\Creative Studio\\Product", expire);
                 }
                 else
                 {
-                    WriteLicenseData(_LicenseSummary.KeyPath + "\\Product\\{" + code.ToString().ToUpper() + "}", expire);
+                    WriteLicenseData(_licenseSummary.KeyPath + "\\Product\\{" + code.ToString().ToUpper() + "}", expire);
                 }
             }
         }
@@ -46,7 +43,7 @@ namespace CeVIOActivator
         {
             using (var registryKey = Registry.CurrentUser.CreateSubKey(keyPath))
             {
-                var data = _ProductLicense.ScrambleDateTime(expire ?? DateTime.MaxValue);
+                var data = _productLicense.ScrambleDateTime(expire ?? DateTime.MaxValue);
                 registryKey.SetValue(null, _EmptyData);
                 registryKey.SetValue("ProductKey", ActivationKey);
                 registryKey.SetValue("License", data);
@@ -56,7 +53,7 @@ namespace CeVIOActivator
         
         public IEnumerable<Guid> GetPackageCodes()
         {
-            using (var registry = Registry.LocalMachine.OpenSubKey($"{_LicenseSummary.KeyPath}\\Product"))
+            using (var registry = Registry.LocalMachine.OpenSubKey($"{_licenseSummary.KeyPath}\\Product"))
             {
                 if (registry == null)
                 {
@@ -69,44 +66,27 @@ namespace CeVIOActivator
             }
         }
 
-        public List<Guid> GetPackageCodesFromLicenseSummary()
-        {
-            var ret = new List<Guid>();
-            foreach (var i in _LicenseSummary.Packages)
-            {
-                ret.Add((Guid)_LicenseSummary.PackageUnit.GetProperty("PackageCode").GetValue(i));
-            }
-            return ret;
-        }
-
         public void GenerateLicenseSummary()
         {
-            _LicenseSummary.AddFeature(Feature.Full);
-            _LicenseSummary.AddPackageCodes(GetPackageCodes());
-            _LicenseSummary.Save();
+            _licenseSummary.AddFeature(Feature.Full);
+            _licenseSummary.AddPackageCodes(GetPackageCodes());
+            _licenseSummary.Save();
         }
 
         public string GetCeVIOProductCode()
         {
-            using (var registry = Registry.LocalMachine.OpenSubKey($"{_LicenseSummary.KeyPath}\\Product"))
+            using (var registry = Registry.LocalMachine.OpenSubKey($"{_licenseSummary.KeyPath}\\Product"))
             {
                 foreach(var subKey in registry.GetSubKeyNames())
                 {
                     var subRegistry = registry.OpenSubKey(subKey);
-                    if (subRegistry.GetValue("ProductName") as string == _App.CommonName)
+                    if (subRegistry.GetValue("ProductName") as string == _app.CommonName)
                     {
                         return new Guid(subKey.Split(' ')[0]).ToString();
                     }
                 }
                 return "";
             }
-        }
-
-        public TimeSpan OfflineAcceptablePeriod => _ProductLicense.OfflineAcceptablePeriod;
-
-        public void Dispose()
-        {
-            _Assembly.Dispose();
         }
     }
 }
