@@ -7,6 +7,11 @@ namespace CeVIOActivator.CLI
     {
         static void Main(string[] args)
         {
+            Console.WriteLine("Author: wangyw15");
+            Console.WriteLine("GitHub: https://github.com/wangyw15/CeVIOActivator");
+            Console.WriteLine("Only for study purpose");
+            Console.WriteLine();
+
             var installFolder = CeVIOHelper.GetCeVIOAIInstallFolder();
 
             var executablePath = CeVIOHelper.GetCeVIOAIExecutable();
