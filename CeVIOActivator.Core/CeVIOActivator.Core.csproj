@@ -44,10 +44,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Activator.cs" />
-    <Compile Include="CeVIOAssemblyManager.cs" />
-    <Compile Include="CeVIO.cs" />
     <Compile Include="AssemblyPatcher.cs" />
+    <Compile Include="CeVIOHelper.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Patches.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

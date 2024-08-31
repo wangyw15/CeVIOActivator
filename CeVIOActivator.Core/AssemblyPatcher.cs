@@ -44,14 +44,14 @@ namespace CeVIOActivator.Core
 
         public static void Patch(string cevioInstallPath, bool dryrun = false)
         {
-            var patches = from p in GetPatches() select (ICeVIOPatch)System.Activator.CreateInstance(p);
+            var patches = from p in GetPatches() select (ICeVIOPatch)Activator.CreateInstance(p);
             var targetFiles = (from p in patches select p.TargetAssembly).Distinct();
 
             foreach (var filename in targetFiles)
             {
                 var modulePath = Path.Combine(cevioInstallPath, filename);
                 var module = ModuleDefMD.Load(File.ReadAllBytes(modulePath));
-                var fileTouched = false;
+                var currentFileTouched = false;
 
                 // find corresponding patches
                 var currentPatches = patches.Where(p => p.TargetAssembly == filename);
@@ -70,7 +70,9 @@ namespace CeVIOActivator.Core
                         {
                             Console.WriteLine("Applying patch: " + patch.GetType().Name);
                             methodPatch.Patch(method);
-                            fileTouched |= true;
+                            currentFileTouched |= true;
+                            method.Body.OptimizeMacros();
+                            method.Body.OptimizeBranches();
                         }
                     }
                     else if (patch is ICeVIOPropertyPatch propertyPatch)
@@ -86,41 +88,35 @@ namespace CeVIOActivator.Core
                         {
                             Console.WriteLine("Applying patch: " + patch.GetType().Name);
                             propertyPatch.Patch(property);
-                            fileTouched |= true;
+                            currentFileTouched |= true;
                         }
                     }
                 }
 
-                if (dryrun || !fileTouched)
+                if (dryrun || !currentFileTouched)
                 {
                     continue;
                 }
 
                 MakeBackup(modulePath);
-
                 module.Save(modulePath);
+                DeleteNgen(modulePath);
             }
         }
 
-        public static void DeleteNgen(string cevioInstallPath)
+        public static void DeleteNgen(string filename)
         {
-            foreach (var i in Directory.GetFiles(cevioInstallPath))
-            {
-                if (!Regex.IsMatch(Path.GetFileName(i), @"^cevio.*\.(?:exe|dll)$", RegexOptions.IgnoreCase))
-                {
-                    continue;
-                }
-                var process = new Process();
-                process.StartInfo.FileName = "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\ngen.exe";
-                process.StartInfo.Arguments = $"uninstall \"{i}\"";
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.StartInfo.RedirectStandardError = true;
-                process.StartInfo.CreateNoWindow = true;
-                process.Start();
-                process.WaitForExit();
-                Console.WriteLine("ngen uninstalled " + i);
-            }
+            Console.WriteLine("Uninstall ngen: " + filename);
+
+            var process = new Process();
+            process.StartInfo.FileName = "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\ngen.exe";
+            process.StartInfo.Arguments = $"uninstall \"{filename}\"";
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.CreateNoWindow = true;
+            process.Start();
+            process.WaitForExit();
         }
     }
 }

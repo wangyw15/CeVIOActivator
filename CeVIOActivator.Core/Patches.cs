@@ -69,50 +69,9 @@ namespace CeVIOActivator.Core
         void Patch(PropertyDef property);
     }
 
-    internal class CeVIOExecutable_Authorizer_ForciblyAuthorize_Patch : ICeVIOMethodPatch
-    {
-        public string TargetAssembly => "CeVIO AI.exe";
-
-        public string TargetType => "CeVIO.Editor.MissionAssistant.Authorizer";
-
-        public string TargetMethod => "ForciblyAuthorize";
-
-        private Instruction FindTargetInstruction(MethodDef method)
-        {
-            var instructions = method.Body.Instructions;
-
-            Instruction target = null;
-            foreach (var instruction in instructions)
-            {
-                if (instruction.OpCode == OpCodes.Ldsfld)
-                {
-                    if (instruction.Operand is MemberRef operand &&
-                        operand.DeclaringType.FullName == typeof(DateTime).FullName &&
-                        operand.Name == nameof(DateTime.MaxValue))
-                    {
-                        target = instruction;
-                        break;
-                    }
-                }
-            }
-            return target;
-        }
-
-        public bool AlreadyPatched(MethodDef method) => FindTargetInstruction(method) == null;
-
-        public void Patch(MethodDef method)
-        {
-            var instructions = method.Body.Instructions;
-            var target = FindTargetInstruction(method);
-
-            if (target != null)
-            {
-                instructions[instructions.IndexOf(target)] = OpCodes.Call.ToInstruction(
-                    method.Module.Import(typeof(DateTime).GetProperty(nameof(DateTime.Now)).GetMethod));
-            }
-        }
-    }
-
+    /// <summary>
+    /// Completely clear Authorizer.Authorize
+    /// </summary>
     internal class CeVIOExecutable_Authorizer_Authorize_Patch : ICeVIOMethodPatch
     {
         public string TargetAssembly => "CeVIO AI.exe";
@@ -121,76 +80,14 @@ namespace CeVIOActivator.Core
 
         public string TargetMethod => "Authorize";
 
-        private Instruction FindTargetInstruction(MethodDef method)
-        {
-            var instructions = method.Body.Instructions;
+        public bool AlreadyPatched(MethodDef method) => method.AlreadyClearBody();
 
-            Instruction target = null;
-            for (var i = 0; i < instructions.Count; i++)
-            {
-                var instruction = instructions[i];
-
-                if (instruction.OpCode == OpCodes.Throw)
-                {
-                    if (instructions[i - 2].OpCode == OpCodes.Call &&
-                        instructions[i - 1].OpCode == OpCodes.Newobj)
-                    {
-                        var operand = (IMemberDef)instructions[i - 2].Operand;
-                        if (operand.Name == "get_Message_License_Error_Authorization")
-                        {
-                            target = instruction;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                }
-            }
-            return target;
-        }
-
-        public bool AlreadyPatched(MethodDef method)
-        {
-            var target = FindTargetInstruction(method);
-            var patchedMethodCount = method.Body.Instructions.IndexOf(target) + 1 + 3;
-            return method.Body.Instructions.Count == patchedMethodCount;
-        }
-
-        public void Patch(MethodDef method)
-        {
-            var instructions = method.Body.Instructions;
-            var target = FindTargetInstruction(method);
-
-            var forciblyAuthorizeMethod = method.DeclaringType.Methods.Single(m => m.Name == "ForciblyAuthorize");
-
-            var reserveCount = instructions.IndexOf(target) + 1;
-            while (instructions.Count > reserveCount)
-            {
-                instructions.Remove(instructions[reserveCount]);
-            }
-            instructions.Add(OpCodes.Ldloc_0.ToInstruction());
-            instructions.Add(OpCodes.Call.ToInstruction(forciblyAuthorizeMethod));
-            instructions.Add(OpCodes.Ret.ToInstruction());
-
-            // add custom code
-            // nop
-            foreach (var i in new int[] { 5, 1, 0 })
-            {
-                instructions.RemoveAt(i);
-            }
-
-            // replace
-            instructions[14] = OpCodes.Stloc_0.ToInstruction();
-            instructions[16] = OpCodes.Ldnull.ToInstruction();
-            instructions.Insert(17, OpCodes.Ceq.ToInstruction());
-            instructions[18] = OpCodes.Brfalse_S.ToInstruction(instructions[22]);
-
-            method.Body.ExceptionHandlers.Clear();
-        }
+        public void Patch(MethodDef method) => method.ClearBody();
     }
 
+    /// <summary>
+    /// Enable offline export
+    /// </summary>
     internal class CeVIOExecutable_Authorizer_HasAuthorized_Patch : ICeVIOPropertyPatch
     {
         public string TargetAssembly => "CeVIO AI.exe";
@@ -199,11 +96,30 @@ namespace CeVIOActivator.Core
 
         public string TargetProperty => "HasAuthorized";
 
-        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.CheckAlreadyReturnTrue();
+        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
 
-        public void Patch(PropertyDef property) => property.GetMethod.ReplaceToReturnTrue();
+        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
     }
 
+    /// <summary>
+    /// Block access to auth service
+    /// </summary>
+    internal class CeVIOExecutable_Authorizer_ServiceIsAvailable_Patch : ICeVIOPropertyPatch
+    {
+        public string TargetAssembly => "CeVIO AI.exe";
+
+        public string TargetType => "CeVIO.Editor.MissionAssistant.Authorizer";
+
+        public string TargetProperty => "ServiceIsAvailable";
+
+        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(false);
+
+        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(false);
+    }
+
+    /// <summary>
+    /// Set the product license to allow offline
+    /// </summary>
     internal class CeVIOExecutable_ProductLicense_AllowsOffline_Patch : ICeVIOPropertyPatch
     {
         public string TargetAssembly => "CeVIO AI.exe";
@@ -212,49 +128,126 @@ namespace CeVIOActivator.Core
 
         public string TargetProperty => "AllowsOffline";
 
-        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.CheckAlreadyReturnTrue();
+        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
 
-        public void Patch(PropertyDef property) => property.GetMethod.ReplaceToReturnTrue();
+        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
     }
 
-    internal class CeVIOExecutable_ProductLicense_OfflineAcceptablePeriod_Patch : ICeVIOMethodPatch
+    /// <summary>
+    /// Set the product license to activated
+    /// </summary>
+    internal class CeVIOExecutable_ProductLicense_IsActivated_Patch : ICeVIOPropertyPatch
     {
         public string TargetAssembly => "CeVIO AI.exe";
 
         public string TargetType => "CeVIO.Editor.MissionAssistant.ProductLicense";
 
-        public string TargetMethod => ".cctor";
+        public string TargetProperty => "IsActivated";
 
-        private Instruction FindTargetInstruction(MethodDef method)
-        {
-            var instructions = method.Body.Instructions;
+        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
 
-            Instruction target = null;
-            foreach (var instruction in instructions)
-            {
-                if (instruction.OpCode == OpCodes.Ldc_R8 && (double)instruction.Operand == 365)
-                {
-                    target = instruction;
-                    break;
-                }
-            }
-            return target;
-        }
-
-        public bool AlreadyPatched(MethodDef method) => FindTargetInstruction(method) == null;
-
-        public void Patch(MethodDef method)
-        {
-            var instructions = method.Body.Instructions;
-
-            var target = FindTargetInstruction(method);
-            instructions[instructions.IndexOf(target) + 1] = OpCodes.Ldsfld.ToInstruction(
-                method.Module.Import(typeof(TimeSpan).GetField(nameof(TimeSpan.MaxValue)))
-                );
-            instructions.Remove(target);
-        }
+        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
     }
 
+    /// <summary>
+    /// Set the product license to authorized
+    /// </summary>
+    internal class CeVIOExecutable_ProductLicense_IsAuthorized_Patch : ICeVIOPropertyPatch
+    {
+        public string TargetAssembly => "CeVIO AI.exe";
+
+        public string TargetType => "CeVIO.Editor.MissionAssistant.ProductLicense";
+
+        public string TargetProperty => "IsAuthorized";
+
+        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
+
+        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
+    }
+
+    /// <summary>
+    /// ProductLibrary.IsAvailableFeature always returns true
+    /// </summary>
+    internal class CeVIOExecutable_ProductLibrary_IsAvailableFeature_Patch : ICeVIOMethodPatch
+    {
+        public string TargetAssembly => "CeVIO AI.exe";
+
+        public string TargetType => "CeVIO.Editor.MissionAssistant.ProductLibrary";
+
+        public string TargetMethod => "IsAvailableFeature";
+
+        public bool AlreadyPatched(MethodDef method) => method.AlreadyReturnBool(true);
+
+        public void Patch(MethodDef method) => method.ReturnBool(true);
+    }
+
+    /// <summary>
+    /// ProductLibrary.SongIsAvailable always true
+    /// </summary>
+    internal class CeVIOExecutable_ProductLibrary_SongIsAvailable_Patch : ICeVIOPropertyPatch
+    {
+        public string TargetAssembly => "CeVIO AI.exe";
+
+        public string TargetType => "CeVIO.Editor.MissionAssistant.ProductLibrary";
+
+        public string TargetProperty => "SongIsAvailable";
+
+        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
+
+        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
+    }
+
+    /// <summary>
+    /// ProductLibrary.TalkIsAvailable always true
+    /// </summary>
+    internal class CeVIOExecutable_ProductLibrary_TalkIsAvailable_Patch : ICeVIOPropertyPatch
+    {
+        public string TargetAssembly => "CeVIO AI.exe";
+
+        public string TargetType => "CeVIO.Editor.MissionAssistant.ProductLibrary";
+
+        public string TargetProperty => "TalkIsAvailable";
+
+        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
+
+        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
+    }
+
+    /// <summary>
+    /// ProductLibrary.SongIsExisting always true
+    /// </summary>
+    internal class CeVIOExecutable_ProductLibrary_SongIsExisting_Patch : ICeVIOPropertyPatch
+    {
+        public string TargetAssembly => "CeVIO AI.exe";
+
+        public string TargetType => "CeVIO.Editor.MissionAssistant.ProductLibrary";
+
+        public string TargetProperty => "SongIsExisting";
+
+        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
+
+        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
+    }
+
+    /// <summary>
+    /// ProductLibrary.TalkIsExisting always true
+    /// </summary>
+    internal class CeVIOExecutable_ProductLibrary_TalkIsExisting_Patch : ICeVIOPropertyPatch
+    {
+        public string TargetAssembly => "CeVIO AI.exe";
+
+        public string TargetType => "CeVIO.Editor.MissionAssistant.ProductLibrary";
+
+        public string TargetProperty => "TalkIsExisting";
+
+        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
+
+        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
+    }
+
+    /// <summary>
+    /// Bypass hash check for the main executable
+    /// </summary>
     internal class Talk_LocalPermission_Assert_Patch : ICeVIOMethodPatch
     {
         public string TargetAssembly => "CeVIO.Talk.dll";
@@ -263,11 +256,14 @@ namespace CeVIOActivator.Core
 
         public string TargetMethod => "Assert";
 
-        public bool AlreadyPatched(MethodDef method) => method.CheckAlreadyClearMethodBody();
+        public bool AlreadyPatched(MethodDef method) => method.AlreadyClearBody();
 
-        public void Patch(MethodDef method) => method.ClearMethodBody();
+        public void Patch(MethodDef method) => method.ClearBody();
     }
 
+    /// <summary>
+    /// Bypass hash check for the main executable
+    /// </summary>
     internal class SongEditorControl_SongEditorControl_Authentication_Patch : ICeVIOMethodPatch
     {
         public string TargetAssembly => "CeVIO.SongEditorControl.dll";
@@ -276,11 +272,14 @@ namespace CeVIOActivator.Core
 
         public string TargetMethod => "Authentication";
 
-        public bool AlreadyPatched(MethodDef method) => method.CheckAlreadyClearMethodBody();
+        public bool AlreadyPatched(MethodDef method) => method.AlreadyClearBody();
 
-        public void Patch(MethodDef method) => method.ClearMethodBody();
+        public void Patch(MethodDef method) => method.ClearBody();
     }
 
+    /// <summary>
+    /// Bypass hash check for the main executable
+    /// </summary>
     internal class Song_tssinger2_TSSingerCLI_cctor_Patch : ICeVIOMethodPatch
     {
         public string TargetAssembly => "CeVIO.Song.dll";
@@ -288,8 +287,6 @@ namespace CeVIOActivator.Core
         public string TargetType => "tssinger2.TSSingerCLI";
 
         public string TargetMethod => ".cctor";
-
-        private const int RESERVE_COUNT = 2;
 
         public bool AlreadyPatched(MethodDef method)
         {
