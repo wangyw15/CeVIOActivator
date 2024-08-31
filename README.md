@@ -2,7 +2,9 @@
 
 Activate all versions of CeVIO AI
 
-**Need to re-run the patch after installing new voicebanks**
+No need to re-run the patch after installing new voicebanks
+
+**Need to re-run the patch after updating either patch or the program**
 
 ---
 
