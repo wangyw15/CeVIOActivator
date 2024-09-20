@@ -218,28 +218,14 @@ namespace CeVIOActivator.Core
 
         public bool AlreadyPatched(PropertyDef property)
         {
-            var instructions = property.GetMethod.Body.Instructions;
-            return instructions[0].OpCode == OpCodes.Ldarg_0 &&
-                instructions[1].OpCode == OpCodes.Call &&
-                (instructions[1].Operand as MethodDef).Name == "get_TalkIsExisting" &&
-                instructions[2].OpCode == OpCodes.Ret;
+            var targetProperty = property.DeclaringType.Properties.Single(p => p.Name == "TalkIsExisting");
+            return property.GetMethod.AlreadyReturnProperty(targetProperty);
         }
 
         public void Patch(PropertyDef property)
         {
-            var availableGetter = property.DeclaringType.Properties.Single(p => p.Name == "TalkIsExisting").GetMethod;
-            var method = property.GetMethod;
-
-            var instructions = method.Body.Instructions;
-            instructions.Clear();
-            if (method.Body.HasExceptionHandlers)
-            {
-                method.Body.ExceptionHandlers.Clear();
-            }
-
-            instructions.Add(OpCodes.Ldarg_0.ToInstruction());
-            instructions.Add(OpCodes.Call.ToInstruction(availableGetter));
-            instructions.Add(OpCodes.Ret.ToInstruction());
+            var targetProperty = property.DeclaringType.Properties.Single(p => p.Name == "TalkIsExisting");
+            property.GetMethod.ReturnProperty(targetProperty);
         }
     }
 
