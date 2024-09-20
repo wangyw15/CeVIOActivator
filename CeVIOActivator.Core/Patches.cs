@@ -192,9 +192,17 @@ namespace CeVIOActivator.Core
 
         public string TargetProperty => "SongIsAvailable";
 
-        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
+        public bool AlreadyPatched(PropertyDef property)
+        {
+            var targetProperty = property.DeclaringType.Properties.Single(p => p.Name == "SongIsExisting");
+            return property.GetMethod.AlreadyReturnProperty(targetProperty);
+        }
 
-        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
+        public void Patch(PropertyDef property)
+        {
+            var targetProperty = property.DeclaringType.Properties.Single(p => p.Name == "SongIsExisting");
+            property.GetMethod.ReturnProperty(targetProperty);
+        }
     }
 
     /// <summary>
@@ -208,41 +216,31 @@ namespace CeVIOActivator.Core
 
         public string TargetProperty => "TalkIsAvailable";
 
-        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
+        public bool AlreadyPatched(PropertyDef property)
+        {
+            var instructions = property.GetMethod.Body.Instructions;
+            return instructions[0].OpCode == OpCodes.Ldarg_0 &&
+                instructions[1].OpCode == OpCodes.Call &&
+                (instructions[1].Operand as MethodDef).Name == "get_TalkIsExisting" &&
+                instructions[2].OpCode == OpCodes.Ret;
+        }
 
-        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
-    }
+        public void Patch(PropertyDef property)
+        {
+            var availableGetter = property.DeclaringType.Properties.Single(p => p.Name == "TalkIsExisting").GetMethod;
+            var method = property.GetMethod;
 
-    /// <summary>
-    /// ProductLibrary.SongIsExisting always true
-    /// </summary>
-    internal class CeVIOExecutable_ProductLibrary_SongIsExisting_Patch : ICeVIOPropertyPatch
-    {
-        public string TargetAssembly => "CeVIO AI.exe";
+            var instructions = method.Body.Instructions;
+            instructions.Clear();
+            if (method.Body.HasExceptionHandlers)
+            {
+                method.Body.ExceptionHandlers.Clear();
+            }
 
-        public string TargetType => "CeVIO.Editor.MissionAssistant.ProductLibrary";
-
-        public string TargetProperty => "SongIsExisting";
-
-        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
-
-        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
-    }
-
-    /// <summary>
-    /// ProductLibrary.TalkIsExisting always true
-    /// </summary>
-    internal class CeVIOExecutable_ProductLibrary_TalkIsExisting_Patch : ICeVIOPropertyPatch
-    {
-        public string TargetAssembly => "CeVIO AI.exe";
-
-        public string TargetType => "CeVIO.Editor.MissionAssistant.ProductLibrary";
-
-        public string TargetProperty => "TalkIsExisting";
-
-        public bool AlreadyPatched(PropertyDef property) => property.GetMethod.AlreadyReturnBool(true);
-
-        public void Patch(PropertyDef property) => property.GetMethod.ReturnBool(true);
+            instructions.Add(OpCodes.Ldarg_0.ToInstruction());
+            instructions.Add(OpCodes.Call.ToInstruction(availableGetter));
+            instructions.Add(OpCodes.Ret.ToInstruction());
+        }
     }
 
     /// <summary>

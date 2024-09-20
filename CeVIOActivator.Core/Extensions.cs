@@ -28,6 +28,31 @@ namespace CeVIOActivator.Core
             method.Body.Instructions.Add(OpCodes.Ret.ToInstruction());
         }
 
+        public static void ReturnProperty(this MethodDef method, PropertyDef property)
+        {
+            var instructions = method.Body.Instructions;
+
+            instructions.Clear();
+            if (method.Body.HasExceptionHandlers)
+            {
+                method.Body.ExceptionHandlers.Clear();
+            }
+
+            instructions.Add(OpCodes.Ldarg_0.ToInstruction());
+            instructions.Add(OpCodes.Call.ToInstruction(property.GetMethod));
+            instructions.Add(OpCodes.Ret.ToInstruction());
+        }
+
+        public static bool AlreadyReturnProperty(this MethodDef method, PropertyDef property)
+        {
+            var instructions = method.Body.Instructions;
+            return instructions.Count == 3 &&
+                instructions[0].OpCode == OpCodes.Ldarg_0 &&
+                instructions[1].OpCode == OpCodes.Call &&
+                (instructions[1].Operand as MethodDef).Name == $"get_{property.Name}" &&
+                instructions[2].OpCode == OpCodes.Ret;
+        }
+
         public static bool AlreadyClearBody(this MethodDef method)
         {
             var cleared = true;
