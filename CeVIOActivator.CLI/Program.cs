@@ -1,5 +1,6 @@
-﻿using CeVIOActivator.Core;
-using System;
+﻿using System;
+
+using CeVIOActivator.Core;
 
 namespace CeVIOActivator.CLI
 {
@@ -43,13 +44,14 @@ namespace CeVIOActivator.CLI
                 }
             }
 
+            Console.WriteLine();
+
             var installFolder = CeVIOHelper.GetCeVIOAIInstallFolder(version);
 
             var executablePath = CeVIOHelper.GetCeVIOAIExecutable(version);
             if (string.IsNullOrEmpty(executablePath))
             {
-                Console.Write("CeVIO AI.exe not found, please specify the file: ");
-                executablePath = (Console.ReadLine() ?? "").Replace("\"", "");
+                Console.Write("CeVIO executable not found, program exit...");
             }
 
             Console.WriteLine("Start patching...");

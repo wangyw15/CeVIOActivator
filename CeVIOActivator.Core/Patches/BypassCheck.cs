@@ -10,7 +10,7 @@ namespace CeVIOActivator.Core.Patches
     /// </summary>
     internal class Talk_LocalPermission_Assert_Patch : ICeVIOMethodPatch
     {
-        public CeVIOVersion TargetVersion => CeVIOVersion.AI;
+        public CeVIOVersion TargetVersion => CeVIOVersion.AI | CeVIOVersion.CS7;
 
         public string TargetAssembly => "CeVIO.Talk.dll";
 
