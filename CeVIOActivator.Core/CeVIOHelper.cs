@@ -6,28 +6,43 @@ namespace CeVIOActivator.Core
     public class CeVIOHelper
     {
         /// <summary>
-        /// Get the installation folder of CeVIO AI
+        /// Get the installation folder of CeVIO
         /// </summary>
-        /// <returns>The installation folder of CeVIO AI</returns>
-        public static string GetCeVIOAIInstallFolder()
+        /// <returns>The installation folder of CeVIO</returns>
+        public static string GetCeVIOAIInstallFolder(CeVIOVersion version)
         {
-            using (var reg = Registry.LocalMachine.OpenSubKey("SOFTWARE\\CeVIO_NV\\Subject\\Editor\\x64"))
+            if (version == CeVIOVersion.AI)
             {
-                if (reg == null)
+                using (var reg = Registry.LocalMachine.OpenSubKey("SOFTWARE\\CeVIO_NV\\Subject\\Editor\\x64"))
                 {
-                    return null;
+                    if (reg == null)
+                    {
+                        return null;
+                    }
+                    return reg.GetValue("InstallFolder") as string;
                 }
-                return reg.GetValue("InstallFolder") as string;
             }
+            else if (version == CeVIOVersion.CS7)
+            {
+                using (var reg = Registry.LocalMachine.OpenSubKey("SOFTWARE\\CeVIO\\Subject\\Editor\\x64"))
+                {
+                    if (reg == null)
+                    {
+                        return null;
+                    }
+                    return reg.GetValue("InstallFolder") as string;
+                }
+            }
+            return null;
         }
 
         /// <summary>
-        /// Get the executable path of CeVIO AI
+        /// Get the executable path of CeVIO
         /// </summary>
-        /// <returns>The executable path of CeVIO AI</returns>
-        public static string GetCeVIOAIExecutable()
+        /// <returns>The executable path of CeVIO</returns>
+        public static string GetCeVIOAIExecutable(CeVIOVersion version)
         {
-            var folder = GetCeVIOAIInstallFolder();
+            var folder = GetCeVIOAIInstallFolder(version);
 
             if (string.IsNullOrEmpty(folder))
             {

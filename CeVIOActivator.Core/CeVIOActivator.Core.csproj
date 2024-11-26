@@ -46,8 +46,12 @@
   <ItemGroup>
     <Compile Include="AssemblyPatcher.cs" />
     <Compile Include="CeVIOHelper.cs" />
+    <Compile Include="CeVIOVersion.cs" />
     <Compile Include="Extensions.cs" />
-    <Compile Include="Patches.cs" />
+    <Compile Include="Patches\AI.cs" />
+    <Compile Include="Patches\BypassCheck.cs" />
+    <Compile Include="Patches\CS7.cs" />
+    <Compile Include="Patches\Models.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -13,3 +13,4 @@ No need to re-run the patch after installing new voicebanks
 - [x] No need to re-activate annually (change `CeVIO.Editor.MissionAssistant.ProductLicense.OfflineAcceptablePeriod`)
 - [x] Remove the warning
 - [x] Without re-running the patch after installing new voicebanks
+- [ ] Add support for CS version

@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
+using CeVIOActivator.Core.Patches;
 
 namespace CeVIOActivator.Core
 {
@@ -42,9 +42,10 @@ namespace CeVIOActivator.Core
             File.Copy(sourcePath, backupPath);
         }
 
-        public static void Patch(string cevioInstallPath, bool dryrun = false)
+        public static void Patch(string cevioInstallPath, CeVIOVersion version, bool dryrun = false)
         {
-            var patches = from p in GetPatches() select (ICeVIOPatch)Activator.CreateInstance(p);
+            var allPatches = from p in GetPatches() select (ICeVIOPatch)Activator.CreateInstance(p);
+            var patches = from p in allPatches where (p.TargetVersion & version) == version select p;
             var targetFiles = (from p in patches select p.TargetAssembly).Distinct();
 
             foreach (var filename in targetFiles)

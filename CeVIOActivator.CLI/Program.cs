@@ -7,14 +7,45 @@ namespace CeVIOActivator.CLI
     {
         static void Main(string[] args)
         {
+            // print author
             Console.WriteLine("Author: wangyw15");
             Console.WriteLine("GitHub: https://github.com/wangyw15/CeVIOActivator");
             Console.WriteLine("Only for study purpose");
             Console.WriteLine();
 
-            var installFolder = CeVIOHelper.GetCeVIOAIInstallFolder();
+            // select version
+            var version = CeVIOVersion.AI;
 
-            var executablePath = CeVIOHelper.GetCeVIOAIExecutable();
+            Console.WriteLine("1. CeVIO AI");
+            Console.WriteLine("2. CeVIO CS7");
+            Console.WriteLine("0. Exit");
+            while (true)
+            {
+                Console.Write("Select version to patch (default 1): ");
+                var choice = Console.ReadLine();
+                if (choice.Trim() == "0")
+                {
+                    return;
+                }
+                else if (choice.Trim() == "1")
+                {
+                    version = CeVIOVersion.AI;
+                    break;
+                }
+                else if (choice.Trim() == "2")
+                {
+                    version = CeVIOVersion.CS7;
+                    break;
+                }
+                else
+                {
+                    Console.WriteLine("Invalid choice!");
+                }
+            }
+
+            var installFolder = CeVIOHelper.GetCeVIOAIInstallFolder(version);
+
+            var executablePath = CeVIOHelper.GetCeVIOAIExecutable(version);
             if (string.IsNullOrEmpty(executablePath))
             {
                 Console.Write("CeVIO AI.exe not found, please specify the file: ");
@@ -23,7 +54,7 @@ namespace CeVIOActivator.CLI
 
             Console.WriteLine("Start patching...");
             
-            AssemblyPatcher.Patch(installFolder, false);
+            AssemblyPatcher.Patch(installFolder, version, false);
 
             Console.WriteLine("Patch complete");
 
