@@ -2,9 +2,24 @@
 
 Activate all versions of CeVIO AI
 
-No need to re-run the patch after installing new voicebanks
+# Usage
 
-**Need to re-run the patch after updating either patch or the program**
+0. Install CeVIO Editor and at least one voicebank
+1. Download the latest version from [Releases](https://github.com/wangyw15/CeVIOActivator/releases/latest)
+2. Unzip the file (to anywhere you want)
+3. Use the executable `CeVIOActivator.Loader.exe` to start CeVIO Editor (**everytime**)
+
+The patch should be always effective for any version.
+
+# Development
+
+> draft
+
+Compile `CeVIOActivator.Patcher` first (if not successful, download [DllExport](https://github.com/3F/DllExport) and try again)
+
+Run `CeVIOActivator.Loader`
+
+I use `StreamWriter` for debug :)
 
 ---
 
