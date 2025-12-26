@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 
 namespace CeVIOActivator.Loader
 {
@@ -72,33 +73,35 @@ namespace CeVIOActivator.Loader
             process.StartInfo.FileName = executable;
             process.Start();
 
-            // inject and patch
             var libPath = "CeVIOActivator.Patcher.dll";
-            using (var reloaded = new Reloaded.Injector.Injector(process))
+            var libFullPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            libFullPath = Path.Combine(libFullPath, libPath);
+
+            // inject and patch
+            var injector = new Injector(process.Handle);
+            // inject
+            Console.WriteLine("Injecting...");
+
+            var hModule = injector.Inject(libFullPath);
+            if (hModule == IntPtr.Zero)
             {
-                var moduleAddr = reloaded.Inject(libPath);
-                if (moduleAddr > 0)
-                {
-                    Console.WriteLine("Injected");
-                }
-                else
-                {
-                    Console.WriteLine("Inject failed");
-                    Console.ReadKey();
-                    return;
-                }
-                var code = reloaded.CallFunction<int>(libPath, "Patch");
-                if (code == 771)
-                {
-                    Console.WriteLine("Patched");
-                }
-                else
-                {
-                    Console.WriteLine("Patch failed");
-                    Console.ReadKey();
-                    return;
-                }
+                Console.WriteLine("Inject failed");
+                Console.ReadKey();
+                return;
             }
+            Console.WriteLine($"Injected, module address: {hModule}");
+
+            // patch
+            Console.WriteLine("Patching...");
+            var code = injector.Call(hModule, "Patch");
+            if (code != 771)
+            {
+                Console.WriteLine("Patch failed");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.WriteLine("Patch complete");
         }
     }
 
