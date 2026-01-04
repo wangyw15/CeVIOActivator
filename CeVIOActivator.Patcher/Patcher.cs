@@ -167,45 +167,45 @@ namespace CeVIOActivator.Patcher
             return false;
         }
     }
-}
 
-#region Block Internet access
-[HarmonyPatch("CeVIO.Editor.MissionAssistant.Authorizer", "ServiceIsAvailable", MethodType.Getter)]
-public class ServiceIsAvailablePatcher
-{
-    public static bool Prefix(ref bool __result)
+    #region Block Internet access
+    [HarmonyPatch("CeVIO.Editor.MissionAssistant.Authorizer", "ServiceIsAvailable", MethodType.Getter)]
+    public class ServiceIsAvailablePatcher
     {
-        __result = false;
-        return false;
+        public static bool Prefix(ref bool __result)
+        {
+            __result = false;
+            return false;
+        }
     }
-}
 
-[HarmonyPatch("CeVIO.Editor.Adapters.MainWindowCircuit", "ThisVersionIsAvailable")]
-public class ThisVersionIsAvailablePatcher
-{
-    public static bool Prefix(ref bool __result)
+    [HarmonyPatch("CeVIO.Editor.Adapters.MainWindowCircuit", "ThisVersionIsAvailable")]
+    public class ThisVersionIsAvailablePatcher
     {
-        __result = true;
-        return false;
+        public static bool Prefix(ref bool __result)
+        {
+            __result = true;
+            return false;
+        }
     }
-}
 
-[HarmonyPatch("CeVIO.Editor.MissionAssistant.AmbientSetting", "CheckForUpdatesOnStartUp", MethodType.Getter)]
-public class CheckForUpdatesOnStartUpPatcher
-{
-    public static bool Prefix(ref bool __result)
+    [HarmonyPatch("CeVIO.Editor.MissionAssistant.AmbientSetting", "CheckForUpdatesOnStartUp", MethodType.Getter)]
+    public class CheckForUpdatesOnStartUpPatcher
     {
-        __result = false;
-        return false;
+        public static bool Prefix(ref bool __result)
+        {
+            __result = false;
+            return false;
+        }
     }
-}
 
-//[HarmonyPatch("CeVIO.Editor.MissionAssistant.ProductLibrary", "GetAdditionalVocalSourceSettingsMaster")]
-//public class GetAdditionalVocalSourceSettingsMasterPatcher
-//{
-//    public static bool Prefix()
-//    {
-//        return false;
-//    }
-//}
-#endregion
+    //[HarmonyPatch("CeVIO.Editor.MissionAssistant.ProductLibrary", "GetAdditionalVocalSourceSettingsMaster")]
+    //public class GetAdditionalVocalSourceSettingsMasterPatcher
+    //{
+    //    public static bool Prefix()
+    //    {
+    //        return false;
+    //    }
+    //}
+    #endregion
+}
