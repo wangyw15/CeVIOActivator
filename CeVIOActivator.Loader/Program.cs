@@ -84,7 +84,9 @@ namespace CeVIOActivator.Loader
             }
             arguments = arguments.Trim();
             arguments = string.Join(" ", args);
-            Console.WriteLine("Open with arguments: " + arguments);
+
+            Console.WriteLine("Launching: " + executable);
+            Console.WriteLine("With arguments: " + arguments);
 
             // start program
             var process = new Process();
