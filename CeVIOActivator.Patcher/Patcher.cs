@@ -84,12 +84,22 @@ namespace CeVIOActivator.Patcher
     {
         public static bool Prefix(MethodBase __originalMethod)
         {
-            // in case the getter of Authorizer.HasAuthorized is inlined
-            var hasAuthorized = __originalMethod.DeclaringType.GetProperty("HasAuthorized");
-            if (hasAuthorized != null)
+            // in case of inline
+            var tObjectHolder = Assembly.GetEntryAssembly().GetType("CeVIO.Editor.MissionAssistant.ObjectHolder");
+            var tProductLibrary = Assembly.GetEntryAssembly().GetType("CeVIO.Editor.MissionAssistant.ProductLibrary");
+            var tFeature = Assembly.GetEntryAssembly().GetType("CeVIO.Editor.ServiceReference.Feature");
+
+            // CeVIO.Editor.MissionAssistant.Authorizer::HasAuthorized
+            var pHasAuthorized = __originalMethod.DeclaringType.GetProperty("HasAuthorized");
+            if (pHasAuthorized != null)
             {
-                hasAuthorized.SetValue(null, true);
+                pHasAuthorized.SetValue(null, true);
             }
+
+            // CeVIO.Editor.MissionAssistant.ProductLibrary::IsAvailableFeature
+            var vFull = tFeature.GetField("Full").GetValue(null);
+            var iProductLibrary = tObjectHolder.GetProperty("ProductLibrary", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
+            tProductLibrary.GetProperty("AvailableFeature", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(iProductLibrary, vFull);
 
             return false;
         }
@@ -138,6 +148,16 @@ namespace CeVIOActivator.Patcher
 
     [HarmonyPatch("CeVIO.Editor.MissionAssistant.ProductLicense", "IsAuthorized", MethodType.Getter)]
     public class IsAuthorizedPatcher
+    {
+        public static bool Prefix(ref bool __result)
+        {
+            __result = true;
+            return false;
+        }
+    }
+
+    [HarmonyPatch("CeVIO.Editor.MissionAssistant.ProductLicense", "IsTransmissive", MethodType.Getter)]
+    public class IsTransmissivePatcher
     {
         public static bool Prefix(ref bool __result)
         {
