@@ -51,6 +51,13 @@ namespace CeVIOActivator.Patcher
             }
             catch (Exception ex)
             {
+#if DEBUG
+                using (var writer = new StreamWriter(Path.Combine("C:/", Assembly.GetExecutingAssembly().FullName + ".log")))
+                {
+                    writer.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    writer.WriteLine(ex);
+                }
+#endif
                 return -1;
             }
 
