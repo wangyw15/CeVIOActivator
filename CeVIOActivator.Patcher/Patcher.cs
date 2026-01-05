@@ -68,8 +68,15 @@ namespace CeVIOActivator.Patcher
     [HarmonyPatch("CeVIO.Editor.MissionAssistant.Authorizer", "Authorize")]
     public class AuthorizePatcher
     {
-        public static bool Prefix()
+        public static bool Prefix(MethodBase __originalMethod)
         {
+            // in case the getter of Authorizer.HasAuthorized is inlined
+            var hasAuthorized = __originalMethod.DeclaringType.GetProperty("HasAuthorized");
+            if (hasAuthorized != null)
+            {
+                hasAuthorized.SetValue(null, true);
+            }
+
             return false;
         }
     }
