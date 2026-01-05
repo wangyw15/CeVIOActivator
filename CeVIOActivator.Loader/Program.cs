@@ -2,6 +2,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
+using System.Threading;
 
 namespace CeVIOActivator.Loader
 {
@@ -67,37 +69,64 @@ namespace CeVIOActivator.Loader
                 }
             }
 
+            // replace origin exe
+            if (Assembly.GetExecutingAssembly().Location == executable)
+            {
+                Console.WriteLine("Working in CeVIO executable replacement mode");
+                executable = Path.Combine(Path.GetDirectoryName(executable), Path.GetFileNameWithoutExtension(executable) + ".orig.exe");
+            }
+
+            // passthrough arguments
+            var arguments = "";
+            foreach (var arg in args)
+            {
+                arguments += $"{arg} ";
+            }
+            arguments = arguments.Trim();
+            arguments = string.Join(" ", args);
+            Console.WriteLine("Open with arguments: " + arguments);
+
             // start program
             var process = new Process();
             process.StartInfo.FileName = executable;
+            process.StartInfo.Arguments = arguments;
             process.Start();
 
+            Patch(process);
+
+            Console.WriteLine("This window will close after 3 seconds...");
+            Thread.Sleep(3 * 1000);
+        }
+
+        public static void Patch(Process process)
+        {
+            // check inject dll
+            var libName = "CeVIOActivator.Patcher.dll";
+            var libPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), libName);
+            if (!File.Exists(libPath))
+            {
+                Console.WriteLine($"Unable to find {libName}");
+                return;
+            }
+
             // inject and patch
-            var libPath = "CeVIOActivator.Patcher.dll";
             using (var reloaded = new Reloaded.Injector.Injector(process))
             {
                 var moduleAddr = reloaded.Inject(libPath);
-                if (moduleAddr > 0)
-                {
-                    Console.WriteLine("Injected");
-                }
-                else
+                if (moduleAddr <= 0)
                 {
                     Console.WriteLine("Inject failed");
-                    Console.ReadKey();
                     return;
                 }
+                Console.WriteLine("Injected");
+
                 var code = reloaded.CallFunction<int>(libPath, "Patch");
-                if (code == 771)
-                {
-                    Console.WriteLine("Patched");
-                }
-                else
+                if (code != 771)
                 {
                     Console.WriteLine("Patch failed");
-                    Console.ReadKey();
                     return;
                 }
+                Console.WriteLine("Patched");
             }
         }
     }
