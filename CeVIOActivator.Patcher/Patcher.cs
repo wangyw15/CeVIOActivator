@@ -33,8 +33,15 @@ namespace CeVIOActivator.Patcher
         [DllExport]
         public static int Patch()
         {
-            var productName = Assembly.GetEntryAssembly().GetName().FullName;
-            productName = productName.Split(',')[0];
+#if DEBUG
+            var writer = new StreamWriter(Path.Combine("D:/", Assembly.GetExecutingAssembly().FullName.Split(',')[0] + ".log"));
+#endif
+            var productName = Assembly.GetEntryAssembly().GetName().Name;
+
+#if DEBUG
+            writer.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            writer.WriteLine(productName);
+#endif
 
             try
             {
@@ -48,20 +55,27 @@ namespace CeVIOActivator.Patcher
                 {
                     harmony.PatchCategory(Assembly.GetExecutingAssembly(), "CS");
                 }
+#if DEBUG
+                foreach (var i in harmony.GetPatchedMethods())
+                {
+                    writer.WriteLine(i.DeclaringType.FullName + "::" + i.Name);
+                }
+#endif
+                return 771;
             }
             catch (Exception ex)
             {
 #if DEBUG
-                using (var writer = new StreamWriter(Path.Combine("C:/", Assembly.GetExecutingAssembly().FullName + ".log")))
-                {
-                    writer.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                    writer.WriteLine(ex);
-                }
+                writer.WriteLine(ex);
 #endif
                 return -1;
             }
-
-            return 771;
+            finally
+            {
+#if DEBUG
+                writer.Close();
+#endif
+            }
         }
     }
 
