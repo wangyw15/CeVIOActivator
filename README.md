@@ -11,6 +11,30 @@ Activate all versions of CeVIO AI
 
 The patch should be always effective for any version.
 
+## Installation
+
+> No need to open the loader everytime
+
+1. Copy all the files of the patch to the installation folder of the CeVIO Editor
+   - For example: `C:\Program Files\CeVIO\CeVIO AI`
+2. Rename `CeVIO AI.exe` to `CeVIO AI.orig.exe`
+3. **Copy** `CeVIO AI.exe.config` to `CeVIO AI.orig.exe.config`
+4. Rename `CeVIOActivator.Loader.exe` to `CeVIO AI.exe`
+5. Open the editor as normal (shortcut, double click with *.ccs file, etc.)
+
+The structure should be like this
+```
+C:\Program Files\CeVIO\CeVIO AI
+|  0Harmony.dll
+|  CeVIO AI.exe
+|  CeVIO AI.exe.config
+|  CeVIO AI.orig.exe
+|  CeVIO AI.orig.exe.config
+|  CeVIOActivator.Patcher.dll
+|  FASMX64.DLL
+|  ...
+```
+
 # Development
 
 > draft
